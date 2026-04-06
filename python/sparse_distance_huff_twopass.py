@@ -5,6 +5,18 @@ import os
 import sys
 sys.setrecursionlimit(100000)
 
+# Configurations
+error_rates = [0.0001,0.0005,0.001]
+code_distances = [19]
+max_nz_distances = [510]
+#Maximum Huffman Code Length
+huff_code_length = 64
+#Number of batches to process
+num_batches = 4000
+#Code Type, default is surface code
+bb_code = 0
+cc_code = 0
+
 def rle_encode(measurement_rounds, max_zero_cnt):
     rle = []
     flat = [int(c) for c in measurement_rounds]
@@ -81,17 +93,8 @@ def huffman_task(freq_counter):
     sorted_lut = sorted(huffman_codes.keys(), key=lambda x: int(x))
     return huffman_codes, sorted_lut
 
-# Configurations
-error_rates = [0.0001,0.0005,0.001]
-code_distances = [19]
-max_nz_distances = [510]
-
-huff_code_length = 64
-
-num_batches = 10000
-
-bb_code = 0
-cc_code = 0
+script_dir = os.path.dirname(os.path.abspath(__file__))
+base_dir = os.path.join(script_dir, "..")
 
 #for bb_code
 bb_total_bits_dict = {6:36,10:54,12:72,18:144,24:392}
@@ -102,23 +105,25 @@ for d, max_nz_distance in zip(code_distances, max_nz_distances):
         num_rows = d+1
         num_cols = (d-1)/2
         if bb_code:
-            input_dirname = f"/afs/eecs.umich.edu/vlsida/projects/QEC/vsim/bb_inputs/circuit_noise/d_{d}/" + f"e_{e:.6f}/"
-            output_dirname = f"/afs/eecs.umich.edu/vlsida/projects/QEC/vsim/bb_outputs/compression_circuit/d_{d}/" + f"e_{e:.6f}/"
+            input_dirname = os.path.join(base_dir, "inputs", "bb_code", "si1000", f"d_{d}", f"e_{e:.6f}")
+            output_dirname = os.path.join(base_dir, "outputs", "bb_code", f"d_{d}", f"e_{e:.6f}")
+            dirname_golden_out = os.path.join(base_dir, "outputs", "bb_code", f"d_{d}", f"e_{e:.6f}") + "/"
             total_bits = (d+1)*bb_total_bits_dict[d]
         elif cc_code:
-            input_dirname = f"/afs/eecs.umich.edu/vlsida/projects/QEC/vsim/cc_inputs/circuit_noise/d_{d}/" + f"e_{e:.6f}/"
-            output_dirname = f"/afs/eecs.umich.edu/vlsida/projects/QEC/vsim/cc_outputs/compression_circuit/d_{d}/" + f"e_{e:.6f}/"
+            input_dirname = os.path.join(base_dir, "inputs", "cc_code", "si1000", f"d_{d}", f"e_{e:.6f}")
+            output_dirname = os.path.join(base_dir, "outputs", "cc_code", f"d_{d}", f"e_{e:.6f}")
+            dirname_golden_out = os.path.join(base_dir, "outputs", "cc_code", f"d_{d}", f"e_{e:.6f}") + "/"
             total_bits = (d+1)*3*(d**2-1)/8
         else:
-            input_dirname = f"/afs/eecs.umich.edu/vlsida/projects/QEC/vsim/inputs/circuit_noise_new/d_{d}/" + f"e_{e:.6f}/"
-            output_dirname = f"/afs/eecs.umich.edu/vlsida/projects/QEC/vsim/outputs/compression_circuit/d_{d}/" + f"e_{e:.6f}/"
+            input_dirname = os.path.join(base_dir, "inputs", "surface_code", "si1000", f"d_{d}", f"e_{e:.6f}")
+            output_dirname = os.path.join(base_dir, "outputs", "surface_code", f"d_{d}", f"e_{e:.6f}")
+            dirname_golden_out = os.path.join(base_dir, "outputs", "surface_code", f"d_{d}", f"e_{e:.6f}") + "/"
             total_bits = num_rows*num_cols*(d+1)
         
         input_filename = os.path.join(input_dirname, "parity_array.in")
         os.makedirs(output_dirname, exist_ok=True)
         # print(total_bits)
         #Golden Brick Gen
-        dirname_golden_out = f"/afs/eecs.umich.edu/vlsida/projects/QEC/vsim/outputs/golden_distance_huff/d_{d}/" + f"e_{e:.6f}/"
         outfile_golden = dirname_golden_out + f"bitstream_{max_nz_distance}.out"
         lutfile = dirname_golden_out + f"hufflut_{max_nz_distance}.txt"
         lengthlutfile = dirname_golden_out + f"hufflengthlut_{max_nz_distance}.txt"
@@ -150,9 +155,8 @@ for d, max_nz_distance in zip(code_distances, max_nz_distances):
         num_entries = len(huffman_codes)
         max_code_len = max(len(code) for code in huffman_codes.values()) if huffman_codes else 0
         print(f"code distances {d} error rate {e} entries of Huffman table: {num_entries} max code length {max_code_len}") 
-        output_filename = os.path.join(output_dirname, f"rev_sparse_distance_huff_{max_nz_distance}.out")
-        bits_filename = os.path.join(output_dirname, f"rev_bits_sparse_distance_huff_{max_nz_distance}.out")
-
+        output_filename = os.path.join(output_dirname, f"sparse_distance_huff_{max_nz_distance}.out")
+        bits_filename = os.path.join(output_dirname, f"bits_sparse_distance_huff_{max_nz_distance}.out")
         with open(output_filename, 'w') as fout, open(bits_filename, 'w') as bout, open(outfile_golden, 'w') as fgold:
             ratios = []
             valid_batches = 0

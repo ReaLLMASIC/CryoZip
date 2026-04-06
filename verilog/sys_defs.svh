@@ -2,11 +2,11 @@
 `define __SYS_DEFS_SVH__
 
 //For baseline compression
-`define CODE_DISTANCE 3
-`define NUM_BITS 1
-//For GEO and DZC
-`define K 9
-`define W 8
+`define CLOCK_PERIOD 10
+`define CODE_DISTANCE 19
+`define ERROR_RATE 0.001000
+`define NUM_BITS 18
+`define ZERO_CNT 510
 
 `define MAX_CODE_DISTANCE 19
 `define MAX_NUM_ROWS (`MAX_CODE_DISTANCE+1)

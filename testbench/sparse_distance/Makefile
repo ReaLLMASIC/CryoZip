@@ -8,16 +8,10 @@ SIM_FILES = $(SOURCE_ROOT)/sparse_distance/sparse_distance_throughput.sv \
 			$(SOURCE_ROOT)/util/syncfifo.v \
 			$(SOURCE_ROOT)/sparse_distance/sparse_distance_huff.sv
 
-CLOCK_PERIOD = 10
-CODE_DISTANCE = 19
-ERROR_RATE = 0.001000
-NUM_BITS = 18
-ZERO_CNT = 510
 
 VV         = vcs -full64
 VVOPTS     = +lint=TFIPC-L -sverilog -assert svaext -xprop=tmerge +vc -Mupdate -line -full64 -kdb -lca -nc -o $@ \
-      		-debug_access+all $(VCS_BAD_WARNINGS) +define+CLOCK_PERIOD=$(CLOCK_PERIOD) +incdir+verilog/ \
-			+define+CODE_DISTANCE=$(CODE_DISTANCE) +define+ERROR_RATE=$(ERROR_RATE) +define+NUM_BITS=$(NUM_BITS)  +define+ZERO_CNT=$(ZERO_CNT)
+      		-debug_access+all +incdir+verilog/
 
 ifdef WAVES
 VVOPTS += +define+DUMP_VCD=1 +memcbk +vcs+dumparrays +sdfverbose

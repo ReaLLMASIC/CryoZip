@@ -25,8 +25,7 @@ module sparse_distance_huff_tb;
 
     parameter PROCESS_LATENCY = 100;//100ns
     parameter CLOCK_PERIOD = `CLOCK_PERIOD;
-    // parameter NUM_ROUNDS = (100000/CODE_DISTANCE); // total number of measurement rounds of errors to simulate
-    parameter NUM_ROUNDS = 1;
+    parameter NUM_ROUNDS = 10;
     parameter MAX_TOTAL_BITS = (MAX_CODE_DISTANCE+1)*MAX_NUM_ROWS*MAX_NUM_COLS;
 
     //Hardware
@@ -50,8 +49,6 @@ module sparse_distance_huff_tb;
     logic                                                           hw_huff_info_last;
     
     //Software
-    // reg [HUFF_CODE_LENGTH-1:0]                                      huff_code_lut [0:HUFF_LUT_DEPTH-1];
-    // reg [$clog2(HUFF_CODE_LENGTH):0]                                huff_length_lut [0:HUFF_LUT_DEPTH-1];
     logic[MAX_TOTAL_BITS-1:0][TX_FIFO_RD_WIDTH-1:0]                 tb_tx_out_data;
     logic[MAX_CODE_DISTANCE:0][MAX_NUM_ROWS-1:0][MAX_NUM_COLS-1:0]  syndrome_array;
     logic                                                           result_ready;
@@ -59,24 +56,6 @@ module sparse_distance_huff_tb;
     integer                                                         hw_output_idx;
     integer                                                         cycles_count;
     
-    `ifdef SYN
-    sparse_distance_huff u_sparse_distance_huff (
-        .clk                     (clk),
-        .rstn                    (rstn),
-
-        .compress_cfg            (compress_cfg_reg),
-        .compress_cfg_vld        (compress_cfg_vld_reg),
-
-        .measurement_round       (hw_syndrome_array_in),
-        .valid_in                (hw_valid_in),
-
-        .huff_code_length_rd_data(hw_huff_code_length_rd_data),
-        .huff_code_rd_data       (hw_huff_code_rd_data),
-
-        .huff_info_valid         (hw_huff_info_valid),
-        .huff_info_last          (hw_huff_info_last)
-    );
-    `else
     sparse_distance_huff #(
         .MAX_CODE_DISTANCE (MAX_CODE_DISTANCE),
         .MAX_ZERO_CNT      (MAX_ZERO_CNT),
@@ -145,7 +124,6 @@ module sparse_distance_huff_tb;
             );
         end
     endgenerate
-    `endif
 
     always #(CLOCK_PERIOD/2) clk = ~clk;
 
@@ -159,15 +137,12 @@ module sparse_distance_huff_tb;
         $dumpvars(0,sparse_distance_huff_tb); //"+all" enables all  signal dumping including Mem, packed array, etc.
         // $fsdbDumpfile("sim.fsdb");
         // $fsdbDumpvars(0,"+all",sparse_distance_huff_tb); //"+all" enables all  signal dumping including Mem, packed array, etc.
-        $sformat(filename, "/afs/eecs.umich.edu/vlsida/projects/QEC/vsim/inputs/circuit_noise_new/d_%0d/e_%0f/parity_array.in", `CODE_DISTANCE, `ERROR_RATE);
+        $sformat(filename, "../../../inputs/surface_code/si1000/d_%0d/e_%0f/parity_array.in", `CODE_DISTANCE, `ERROR_RATE);
         in_fd = $fopen(filename, "r");
-        $sformat(filename, "/afs/eecs.umich.edu/vlsida/projects/QEC/vsim/outputs/sparse_distance_huff/d_%0d/e_%0f/bitstream_%0d.out", `CODE_DISTANCE, `ERROR_RATE, `ZERO_CNT);
+        $sformat(filename, "../../../outputs/surface_code/d_%0d/e_%0f/hw_bitstream_%0d.out", `CODE_DISTANCE, `ERROR_RATE, `ZERO_CNT);
         out_fd = $fopen(filename,"w");
     end
 
-    `ifdef SYN
-    //pass
-    `else
     genvar i_gen;
     generate
         for(i_gen=0;i_gen<IDX_PER_WL;i_gen=i_gen+1) begin
@@ -176,23 +151,17 @@ module sparse_distance_huff_tb;
                     LUTS[i_gen].code_lut_inst.mem[d] = 0;
                     LUTS[i_gen].code_length_lut_inst.mem[d] = 0;
                 end
-                $sformat(filename, "/afs/eecs.umich.edu/vlsida/projects/QEC/vsim/outputs/golden_distance_huff/d_%0d/e_%0f/hufflut_%0d.txt", `CODE_DISTANCE, `ERROR_RATE, `ZERO_CNT);
+                $sformat(filename, "../../../outputs/surface_code/d_%0d/e_%0f/hufflut_%0d.txt", `CODE_DISTANCE, `ERROR_RATE, `ZERO_CNT);
                 $readmemb(filename, LUTS[i_gen].code_lut_inst.mem);
-                $sformat(filename, "/afs/eecs.umich.edu/vlsida/projects/QEC/vsim/outputs/golden_distance_huff/d_%0d/e_%0f/hufflengthlut_%0d.txt", `CODE_DISTANCE, `ERROR_RATE, `ZERO_CNT);
+                $sformat(filename, "../../../outputs/surface_code/d_%0d/e_%0f/hufflengthlut_%0d.txt", `CODE_DISTANCE, `ERROR_RATE, `ZERO_CNT);
                 $readmemh(filename, LUTS[i_gen].code_length_lut_inst.mem);
             end
         end
     endgenerate
-    `endif
 
     initial begin
         #10 //wait for table initialization
         
-        // $display("Huffman lookup table");
-        // for(int d=0;d<HUFF_LUT_DEPTH;d++) begin
-        //     $display("%d:%b",d,LUTS[0].code_lut_inst.mem[d]);
-        // end
-
         clk=0;
         rstn=1;
         hw_syndrome_array_in = 0;
@@ -206,19 +175,6 @@ module sparse_distance_huff_tb;
         rstn=1;
         repeat (10) @(negedge clk);
 
-        `ifdef SYN
-        for(int d=0;d<HUFF_LUT_DEPTH;d++) begin
-            u_sparse_distance_huff.global_huffman_lookup_inst.global_huffman_lut_wrapper_inst.LUTS_0__code_lut_inst.uut.mem_core_array[d] = 1;
-            u_sparse_distance_huff.global_huffman_lookup_inst.global_huffman_lut_wrapper_inst.LUTS_0__code_length_lut_inst.uut.mem_core_array[d] = 0;
-        end
-        // $display(u_sparse_distance_huff.global_huffman_lookup_inst.global_huffman_lut_wrapper_inst.LUTS_0__code_lut_inst.uut.mem_core_array[1]);
-        $sformat(filename, "/afs/eecs.umich.edu/vlsida/projects/QEC/vsim/outputs/golden_distance_huff/d_%0d/e_%0f/hufflut_%0d.txt", `CODE_DISTANCE, `ERROR_RATE, `ZERO_CNT);
-        $readmemb(filename, u_sparse_distance_huff.global_huffman_lookup_inst.global_huffman_lut_wrapper_inst.LUTS_0__code_lut_inst.uut.mem_core_array);
-        // $display(u_sparse_distance_huff.global_huffman_lookup_inst.global_huffman_lut_wrapper_inst.LUTS_0__code_lut_inst.uut.mem_core_array[1]);
-        $sformat(filename, "/afs/eecs.umich.edu/vlsida/projects/QEC/vsim/outputs/golden_distance_huff/d_%0d/e_%0f/hufflengthlut_%0d.txt", `CODE_DISTANCE, `ERROR_RATE, `ZERO_CNT);
-        $readmemh(filename, u_sparse_distance_huff.global_huffman_lookup_inst.global_huffman_lut_wrapper_inst.LUTS_0__code_length_lut_inst.uut.mem_core_array);
-        `endif
-        
         //initialize config registers
         compress_cfg_reg.code_distance = `CODE_DISTANCE;
         compress_cfg_reg.num_cols_x_num_rows = NUM_ROWS*NUM_COLS;
@@ -280,9 +236,6 @@ module sparse_distance_huff_tb;
             end
             result_ready = 0;
 
-            `ifdef SYN
-                //pass
-            `else
             str = "";
             
             for (int q = 0; q < hw_output_idx; q++) begin
@@ -292,7 +245,6 @@ module sparse_distance_huff_tb;
             end
 
             $fdisplay(out_fd,"%s",str);
-            `endif
             // $display("%s",str);
 
             $display("*********************");
@@ -306,12 +258,6 @@ module sparse_distance_huff_tb;
         $finish;
     end
 
-    `ifdef SYN
-    always @(negedge clk) begin
-        if(hw_huff_info_last)
-            result_ready = 1;
-    end
-    `else
     always @(negedge clk) begin
         if(hw_tx_out_vld) begin
             // $display("hw_non_zero=%b, hw_output_idx=%d",hw_non_zero[i],hw_output_idx);
@@ -338,7 +284,6 @@ module sparse_distance_huff_tb;
             $display("cycles till compress done %d, time %d ns",cycles_count, cycles_count*CLOCK_PERIOD);
         end
     end
-    `endif
 
 
 endmodule
